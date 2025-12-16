@@ -1,45 +1,29 @@
 ## For a backtest, I wanted to study the marginal profitability of lowering the moneyness of a put (to pay less for it). I derived the code for calls in order to test new strategies. 
 
-# NDX 30D Options Pricing Pipeline
+# NDX 30D Options Backtest Pipeline
 
-Batch-computes Black-Scholes prices for NDX tickers: ATM calls (95% moneyness), OTM puts (87.5%). From daily CSVs (spot, IV, dividends, 1M rfr). 2020-2025 data.
+Modular Black-Scholes pricer for calls/puts at variable moneyness (M=100% ATM). Computes daily prices from spot/IV/div/rfr CSVs (2020+). For backtesting marginal profitability of OTM puts (lower M → cheaper premium).
 
-## Overview
-- **Inputs**: 4 CSVs (`spot.csv`, `iv.csv`, `dividend.csv`, `rfr.csv`); ; sep, , decimals, mixed date formats (%m/%d/%Y or %d/%m/%Y).
-- **Outputs**: `Output/NDX_ATM_Call30D_Prices_2020.csv`, `Output/NDX_OTM_Put30D_Prices_875Moneyness_2020_2025.csv`.
-- **Params**: T=30/365 (~1M), r/q continuous (ln(1+x/100)), IV/100 decimal.
-- **Tickers**: NDX spot columns; rfr='USGG1M_Index'; div NaN→0.
+## Purpose
+- Study put strategies: Lower moneyness (e.g., M=85-95%) reduces premium cost → test PNL/edge.
+- Calls derived analogously for symmetric testing (e.g., ITM/OTM calls).
+
+## Code Structure
+- **Inputs**:
+  - CSVs: `spot.csv` (tickers), `iv.csv`, `dividend.csv`, `rfr.csv` ('USGG1M_Index').
+  - Params: `T=30/365.0` (maturity), `M=90.0` (moneyness % → K=S*M/100).
+- **Cleaning**: Parse mixed dates (; sep, ,→.), float cast, NaN filter, intersect dates.
+- **BS Loop**: Per date/ticker → continuous r/q/σ → `black_scholes_call/put(S, K=S*M/100, T, r, q, σ)`.
+- **Output**: DF (dates x tickers) → CSV (`Output/NDX_[Call|Put]30D_Prices_M{M:.1f}Moneyness_*.csv`).
+- **Extensible**: Swap call/put, tweak M/T, add Greeks/P&L sim.
 
 ## Files
-- `atm_calls.py`: 95% K=S*0.95 calls.
-- `otm_puts.py`: 87.5% K=S*0.875 puts.
-- Shared: Data cleaning (dates/NaN/comma), BS funcs, date filter (2020+).
+- `atm_calls.py`: Template for calls (set `M`, e.g., 95.0).
+- `otm_puts.py`: Template for puts (set `M`, e.g., 87.5).
+- Edit: Paths, `start_date`, `M` (input var), output filename.
 
 ## Run
 ```bash
 pip install pandas numpy scipy
-# Edit paths: spot_path etc.
-python atm_calls.py
-python otm_puts.py
-
-Here are all the inputs you need for both codes: 
-
-Spot price ;
-Implied Volatility ;
-Dividend yield ;
-Risk-free rate ;
-Time to maturity (T) ;
-Moneyness (M)
-
-NB: customize the access paths
-
-Mechanics
-
-Load/parse CSVs → float → align dates.
-Common dates intersect.
-Loop: S=spot, σ=IV, q=div, r=rfr → K=moneyness*S → BS price → DF.
-NaN skip (S/σ/r).
-Save ; sep, . decimal.
-
-
-
+# Set paths, M=92.5, etc.
+python calls.py  # Or copy/rename
